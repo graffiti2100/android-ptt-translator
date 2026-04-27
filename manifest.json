@@ -1,0 +1,19 @@
+{
+  "name": "Android 平板雙向 Push-to-talk 翻譯器",
+  "short_name": "PTT 翻譯器",
+  "description": "給健檢現場使用的雙向按住說話翻譯器，支援中文、越南文、印尼文、泰文與英文。",
+  "start_url": "./index.html?v=1",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef4f1",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "icon.svg?v=1",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

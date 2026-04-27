@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="application-name" content="Android 平板雙向 Push-to-talk 翻譯器">
+  <title>Android 平板雙向 Push-to-talk 翻譯器</title>
+  <link rel="manifest" href="manifest.json?v=1">
+  <link rel="icon" href="icon.svg?v=1" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef4f1;
+      --surface: #ffffff;
+      --surface-2: #f6faf8;
+      --ink: #17201d;
+      --muted: #60726c;
+      --line: #d8e4df;
+      --doctor: #0f766e;
+      --doctor-dark: #115e59;
+      --patient: #b45309;
+      --patient-dark: #92400e;
+      --danger: #b42318;
+      --shadow: 0 18px 38px rgba(25, 48, 42, 0.14);
+      --dialog-font: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      height: 100dvh;
+      padding: 16px;
+      gap: 12px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      align-items: end;
+      gap: 12px;
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.12;
+      font-weight: 800;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select,
+    .clear-button {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    }
+
+    select {
+      min-width: 160px;
+      padding: 0 40px 0 14px;
+      font-weight: 750;
+    }
+
+    .quick-action {
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      min-height: 0;
+      gap: 12px;
+    }
+
+    .quick-phrases {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 4px 6px;
+      scrollbar-width: none;
+    }
+    
+    .quick-phrases::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quick-phrase-btn {
+      flex: 0 0 auto;
+      padding: 12px 18px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--doctor);
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      transition: transform 0.1s;
+    }
+
+    .quick-phrase-btn:active {
+      transform: scale(0.95);
+      background: var(--surface-2);
+    }
+
+    .buttons-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .talk-panel,
+    .log-panel {
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .talk-panel {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      overflow: hidden;
+    }
+
+    .ptt-button {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 14px;
+      width: 100%;
+      min-height: 100%;
+      border: 0;
+      color: #ffffff;
+      cursor: pointer;
+      padding: 22px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    .ptt-button.doctor {
+      background: linear-gradient(180deg, var(--doctor), var(--doctor-dark));
+    }
+
+    .ptt-button.patient {
+      background: linear-gradient(180deg, var(--patient), var(--patient-dark));
+    }
+
+    .ptt-button:active,
+    .ptt-button.is-listening {
+      filter: saturate(1.2) brightness(0.9);
+      transform: scale(0.96);
+    }
+
+    .ptt-icon {
+      display: grid;
+      place-items: center;
+      width: clamp(88px, 11vw, 136px);
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 3px solid rgba(255, 255, 255, 0.55);
+      font-size: clamp(40px, 5vw, 62px);
+      line-height: 1;
+    }
+
+    .ptt-title {
+      font-size: clamp(24px, 3.2vw, 42px);
+      font-weight: 900;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .ptt-hint {
+      max-width: 220px;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 15px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .live-text {
+      min-height: 92px;
+      padding: 14px;
+      background: var(--surface-2);
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .log-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .log-header h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .clear-button {
+      padding: 0 14px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .conversation {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    .empty-state {
+      margin: auto;
+      max-width: 430px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .message {
+      border: 1px solid var(--line);
+      border-left-width: 7px;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px 14px;
+    }
+
+    .message.doctor {
+      border-left-color: var(--doctor);
+    }
+
+    .message.patient {
+      border-left-color: var(--patient);
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .message-original,
+    .message-translation {
+      font-size: var(--dialog-font);
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .message-original {
+      color: var(--ink);
+    }
+
+    .message-translation {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--line);
+      color: #253b35;
+      font-weight: 750;
+    }
+
+    .message-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .quick-action {
+      width: 40px;
+      height: 36px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      font-size: 18px;
+    }
+
+    .statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .install-tip {
+      white-space: nowrap;
+    }
+
+    @media (max-width: 920px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+
+      .brand {
+        grid-column: 1 / -1;
+      }
+
+      .talk-panel {
+        min-height: 280px;
+      }
+
+      .log-panel {
+        min-height: 460px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        padding: 10px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .talk-panel {
+        min-height: 180px;
+      }
+
+      .statusbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Android 平板雙向 Push-to-talk 翻譯器</h1>
+        <p>醫師按左邊說中文，外籍勞工按右邊說母語；每一句都會顯示原文與翻譯。</p>
+      </div>
+
+      <div class="field">
+        <label for="languageSelect">對方語言</label>
+        <select id="languageSelect" aria-label="選擇對方語言">
+          <option value="vi">越南文</option>
+          <option value="id">印尼文</option>
+          <option value="th">泰文</option>
+          <option value="en">英文</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="workspace" aria-label="翻譯主畫面">
+      <section class="log-panel">
+        <div class="log-header">
+          <h2>對話紀錄</h2>
+          <button id="clearLog" class="clear-button" type="button">清除紀錄</button>
+        </div>
+        <div id="conversation" class="conversation" aria-live="polite">
+          <div class="empty-state">尚無對話。按住下方按鈕開始說話。</div>
+        </div>
+      </section>
+
+      <div class="buttons-container">
+        <aside class="talk-panel">
+          <button id="doctorButton" class="ptt-button doctor" type="button">
+            <span class="ptt-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            </span>
+            <span class="ptt-title">中文</span>
+            <span class="ptt-hint">按住說話</span>
+          </button>
+          <div id="doctorLive" class="live-text">等待醫師說話</div>
+        </aside>
+
+        <aside class="talk-panel">
+          <button id="patientButton" class="ptt-button patient" type="button">
+            <span class="ptt-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            </span>
+            <span id="patientButtonTitle" class="ptt-title">越南文</span>
+            <span id="patientButtonHint" class="ptt-hint">按住說話</span>
+          </button>
+          <div id="patientLive" class="live-text">等待對方說話</div>
+        </aside>
+      </div>
+
+      <div class="quick-phrases" id="quickPhrases"></div>
+    </section>
+
+    <footer class="statusbar">
+      <span id="status" class="status">準備就緒</span>
+      <span class="install-tip">Android Chrome 可加入主畫面使用</span>
+    </footer>
+  </main>
+
+  <script>
+    const languages = {
+      vi: { label: "越南文", nativeLabel: "Tiếng Việt", holdToTalk: "Nhấn giữ để nói", speech: "vi-VN", translate: "vi" },
+      id: { label: "印尼文", nativeLabel: "Bahasa Indonesia", holdToTalk: "Tahan untuk bicara", speech: "id-ID", translate: "id" },
+      th: { label: "泰文", nativeLabel: "ภาษาไทย", holdToTalk: "กดค้างเพื่อพูด", speech: "th-TH", translate: "th" },
+      en: { label: "英文", nativeLabel: "English", holdToTalk: "Hold to talk", speech: "en-US", translate: "en" }
+    };
+
+    const quickPhrasebook = [
+      {
+        zh: "有沒有慢性疾病在長期服用藥物？",
+        vi: "Bạn có bệnh mãn tính nào và đang dùng thuốc lâu dài không?",
+        id: "Apakah Anda memiliki penyakit kronis dan mengonsumsi obat jangka panjang?",
+        th: "คุณมีโรคประจำตัวที่ต้องกินยาเป็นประจำไหม",
+        en: "Do you have any chronic diseases and take long-term medication?"
+      },
+      {
+        zh: "有沒有抽菸？",
+        vi: "Bạn có hút thuốc không?",
+        id: "Apakah Anda merokok?",
+        th: "คุณสูบบุหรี่ไหม",
+        en: "Do you smoke?"
+      }
+    ];
+
+    const state = {
+      targetLang: localStorage.getItem("targetLang") || "vi",
+      recognition: null,
+      activeSide: null,
+      finalTranscript: "",
+      interimTranscript: "",
+      fallbackTimer: null
+    };
+
+    const els = {
+      languageSelect: document.getElementById("languageSelect"),
+      doctorButton: document.getElementById("doctorButton"),
+      patientButton: document.getElementById("patientButton"),
+      patientButtonTitle: document.getElementById("patientButtonTitle"),
+      patientButtonHint: document.getElementById("patientButtonHint"),
+      doctorLive: document.getElementById("doctorLive"),
+      patientLive: document.getElementById("patientLive"),
+      conversation: document.getElementById("conversation"),
+      clearLog: document.getElementById("clearLog"),
+      status: document.getElementById("status")
+    };
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    init();
+
+    function init() {
+      els.languageSelect.value = state.targetLang;
+      els.patientButtonTitle.textContent = languages[state.targetLang].nativeLabel;
+      els.patientButtonHint.textContent = languages[state.targetLang].holdToTalk;
+      bindPressToTalk(els.doctorButton, "doctor");
+      bindPressToTalk(els.patientButton, "patient");
+      renderQuickPhrases();
+
+      els.languageSelect.addEventListener("change", () => {
+        state.targetLang = els.languageSelect.value;
+        localStorage.setItem("targetLang", state.targetLang);
+        els.patientButtonTitle.textContent = languages[state.targetLang].nativeLabel;
+        els.patientButtonHint.textContent = languages[state.targetLang].holdToTalk;
+        setStatus(`已切換對方語言：${languages[state.targetLang].label}`);
+      });
+
+      els.clearLog.addEventListener("click", clearConversation);
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("sw.js?v=7").catch(() => {});
+        });
+      }
+
+      if (!SpeechRecognition) {
+        setStatus("此瀏覽器不支援語音辨識。建議使用 Android Chrome。");
+      }
+    }
+
+    function renderQuickPhrases() {
+      const container = document.getElementById("quickPhrases");
+      if (!container) return;
+      container.replaceChildren();
+      quickPhrasebook.forEach((phrase) => {
+        const btn = document.createElement("button");
+        btn.className = "quick-phrase-btn";
+        btn.textContent = phrase.zh;
+        btn.addEventListener("click", () => {
+          addMessage("doctor", phrase.zh, phrase[state.targetLang]);
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function bindPressToTalk(button, side) {
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        button.setPointerCapture(event.pointerId);
+        startListening(side);
+      });
+
+      button.addEventListener("pointerup", (event) => {
+        event.preventDefault();
+        stopListening();
+      });
+
+      button.addEventListener("pointercancel", () => stopListening());
+      button.addEventListener("lostpointercapture", () => {
+        if (state.activeSide === side) stopListening();
+      });
+    }
+
+    function startListening(side) {
+      if (!SpeechRecognition) return;
+      stopListening(false);
+      state.activeSide = side;
+      state.finalTranscript = "";
+      state.interimTranscript = "";
+      const live = side === "doctor" ? els.doctorLive : els.patientLive;
+      const button = side === "doctor" ? els.doctorButton : els.patientButton;
+      live.textContent = "正在聆聽...";
+      button.classList.add("is-listening");
+      setStatus(side === "doctor" ? "正在聽醫師說中文" : `正在聽對方說${languages[state.targetLang].label}`);
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = side === "doctor" ? "zh-TW" : languages[state.targetLang].speech;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const text = event.results[i][0].transcript.trim();
+          if (event.results[i].isFinal) state.finalTranscript += text;
+          else interim += text;
+        }
+        state.interimTranscript = interim;
+        live.textContent = state.finalTranscript || interim || "正在聆聽...";
+      };
+
+      recognition.onerror = () => {
+        live.textContent = "沒有收到清楚語音，請再按一次。";
+        setStatus("語音辨識未成功，請確認已允許麥克風權限。");
+        cleanupListening();
+      };
+
+      recognition.onend = () => {
+        if (state.activeSide) finishListening();
+      };
+
+      state.recognition = recognition;
+      recognition.start();
+    }
+
+    function stopListening(shouldFinish = true) {
+      if (!state.recognition) return;
+      const recognition = state.recognition;
+      state.recognition = null;
+      
+      if (state.activeSide) {
+        const button = state.activeSide === "doctor" ? els.doctorButton : els.patientButton;
+        button.classList.remove("is-listening");
+        const live = state.activeSide === "doctor" ? els.doctorLive : els.patientLive;
+        if (shouldFinish) {
+          live.textContent = "處理中...";
+        }
+      }
+
+      try {
+        recognition.stop();
+      } catch (error) {
+        cleanupListening();
+      }
+      
+      if (!shouldFinish) {
+        cleanupListening();
+      } else if (state.activeSide) {
+        clearTimeout(state.fallbackTimer);
+        state.fallbackTimer = setTimeout(() => {
+          if (state.activeSide) finishListening();
+        }, 3000);
+      }
+    }
+
+    async function finishListening() {
+      const side = state.activeSide;
+      const text = (state.finalTranscript || state.interimTranscript).trim();
+      const live = side === "doctor" ? els.doctorLive : els.patientLive;
+      
+      cleanupListening();
+      
+      if (!text) {
+        setStatus("沒有收到內容，請再按住說一次。");
+        live.textContent = side === "doctor" ? "等待醫師說話" : "等待對方說話";
+        return;
+      }
+
+      const target = side === "doctor" ? state.targetLang : "zh-TW";
+      const source = side === "doctor" ? "zh-TW" : languages[state.targetLang].translate;
+      setStatus("正在翻譯...");
+      live.textContent = "正在翻譯...";
+      
+      const translated = await translateText(text, source, target);
+      addMessage(side, text, translated);
+      
+      live.textContent = side === "doctor" ? "等待醫師說話" : "等待對方說話";
+    }
+
+    function cleanupListening() {
+      state.activeSide = null;
+      els.doctorButton.classList.remove("is-listening");
+      els.patientButton.classList.remove("is-listening");
+      clearTimeout(state.fallbackTimer);
+    }
+
+    async function translateText(text, source, target) {
+      try {
+        const sourceCode = normalizeTranslateCode(source);
+        const targetCode = normalizeTranslateCode(target);
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceCode}|${targetCode}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("translation failed");
+        const data = await response.json();
+        const translated = data && data.responseData && data.responseData.translatedText;
+        if (translated) return cleanTranslation(translated);
+      } catch (error) {
+        setStatus("線上翻譯暫時無法使用，已保留原文。");
+      }
+
+      return "翻譯暫時無法取得，請稍後再試。";
+    }
+
+    function normalizeTranslateCode(code) {
+      if (code === "zh-TW") return "zh-TW";
+      return code;
+    }
+
+    function cleanTranslation(text) {
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = text;
+      return textarea.value;
+    }
+
+    function addMessage(side, original, translation) {
+      const empty = els.conversation.querySelector(".empty-state");
+      if (empty) empty.remove();
+
+      const languageLabel = side === "doctor" ? `中文 → ${languages[state.targetLang].label}` : `${languages[state.targetLang].label} → 中文`;
+      const article = document.createElement("article");
+      article.className = `message ${side}`;
+      article.innerHTML = `
+        <div class="message-meta">
+          <span>${side === "doctor" ? "醫師" : "對方"} · ${languageLabel}</span>
+          <span>${new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+        <div class="message-original">${escapeHtml(original)}</div>
+        <div class="message-translation">${escapeHtml(translation)}</div>
+        <div class="message-actions">
+          <button class="quick-action" type="button" aria-label="朗讀翻譯">▶</button>
+        </div>
+      `;
+      article.querySelector(".quick-action").addEventListener("click", () => speak(translation, side === "doctor" ? languages[state.targetLang].speech : "zh-TW"));
+      els.conversation.appendChild(article);
+      els.conversation.scrollTop = els.conversation.scrollHeight;
+      setStatus("已加入對話紀錄");
+      speak(translation, side === "doctor" ? languages[state.targetLang].speech : "zh-TW");
+    }
+
+    function speak(text, lang) {
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = 0.92;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function clearConversation() {
+      window.speechSynthesis && window.speechSynthesis.cancel();
+      els.conversation.innerHTML = '<div class="empty-state">尚無對話。按住下方按鈕開始說話。</div>';
+      els.doctorLive.textContent = "等待醫師說話";
+      els.patientLive.textContent = "等待對方說話";
+      setStatus("對話紀錄已清除");
+    }
+
+    function setStatus(text) {
+      els.status.textContent = text;
+    }
+
+    function normalizeText(text) {
+      return text.replace(/\s+/g, "").replace(/[，。！？,.!?]/g, "").toLowerCase();
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
