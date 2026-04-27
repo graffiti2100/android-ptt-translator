@@ -102,6 +102,7 @@
     }
 
     select,
+    .field input,
     .clear-button {
       min-height: 46px;
       border: 1px solid var(--line);
@@ -109,6 +110,12 @@
       background: var(--surface);
       color: var(--ink);
       box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    }
+
+    .field input {
+      padding: 0 14px;
+      font-weight: 700;
+      width: 140px;
     }
 
     select {
@@ -128,9 +135,50 @@
 
     .workspace {
       display: grid;
-      grid-template-rows: 1fr auto auto;
+      grid-template-rows: 1fr auto auto auto;
       min-height: 0;
       gap: 12px;
+    }
+
+    .text-input-form {
+      display: flex;
+      gap: 8px;
+      padding: 0;
+    }
+    
+    .text-input-form input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 16px;
+      outline: none;
+      background: #ffffff;
+      color: var(--ink);
+      transition: border-color 0.2s;
+    }
+    
+    .text-input-form input:focus {
+      border-color: var(--doctor);
+    }
+    
+    .send-button {
+      background: var(--doctor);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.1s;
+    }
+    
+    .send-button:active {
+      transform: scale(0.92);
     }
 
     .quick-phrases {
@@ -446,6 +494,11 @@
           <option value="en">英文</option>
         </select>
       </div>
+
+      <div class="field">
+        <label for="apiKey">Gemini API Key</label>
+        <input type="password" id="apiKey" placeholder="請輸入 Key">
+      </div>
     </header>
 
     <section class="workspace" aria-label="翻譯主畫面">
@@ -459,28 +512,23 @@
         </div>
       </section>
 
-      <div class="buttons-container">
-        <aside class="talk-panel">
-          <button id="doctorButton" class="ptt-button doctor" type="button">
-            <span class="ptt-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-            </span>
-            <span class="ptt-title">中文</span>
-            <span class="ptt-hint">按住說話</span>
-          </button>
-          <div id="doctorLive" class="live-text">等待醫師說話</div>
-        </aside>
+      <form id="textInputForm" class="text-input-form" aria-label="手動輸入文字">
+        <input type="text" id="textInput" placeholder="在此輸入中文..." autocomplete="off">
+        <button type="submit" class="send-button" aria-label="送出">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </form>
 
-        <aside class="talk-panel">
-          <button id="patientButton" class="ptt-button patient" type="button">
-            <span class="ptt-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-            </span>
-            <span id="patientButtonTitle" class="ptt-title">越南文</span>
-            <span id="patientButtonHint" class="ptt-hint">按住說話</span>
-          </button>
-          <div id="patientLive" class="live-text">等待對方說話</div>
-        </aside>
+      <div class="buttons-container" style="display: flex; justify-content: center; padding: 16px;">
+        <button id="liveToggleButton" class="ptt-button doctor" type="button" style="width: 100%; max-width: 400px; border-radius: 24px; aspect-ratio: auto; padding: 24px;">
+          <span class="ptt-icon" id="liveIcon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </span>
+          <span id="liveTitle" class="ptt-title" style="font-size: 1.5rem; margin-top: 8px;">啟動即時雙向翻譯</span>
+          <span id="liveHint" class="ptt-hint">點擊後不需按住，雙方可自由對話</span>
+        </button>
       </div>
 
       <div class="quick-phrases" id="quickPhrases"></div>
@@ -493,6 +541,9 @@
   </main>
 
   <script>
+    const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
+    const TEXT_MODEL = "gemini-2.5-flash-lite";
+
     const languages = {
       vi: { label: "越南文", nativeLabel: "Tiếng Việt", holdToTalk: "Nhấn giữ để nói", speech: "vi-VN", translate: "vi" },
       id: { label: "印尼文", nativeLabel: "Bahasa Indonesia", holdToTalk: "Tahan untuk bicara", speech: "id-ID", translate: "id" },
@@ -519,221 +570,309 @@
 
     const state = {
       targetLang: localStorage.getItem("targetLang") || "vi",
-      recognition: null,
-      activeSide: null,
-      finalTranscript: "",
-      interimTranscript: "",
-      fallbackTimer: null
+      isLive: false,
+      ws: null,
+      audioContext: null,
+      processor: null,
+      stream: null,
+      currentMessageDiv: null
     };
 
     const els = {
       languageSelect: document.getElementById("languageSelect"),
-      doctorButton: document.getElementById("doctorButton"),
-      patientButton: document.getElementById("patientButton"),
-      patientButtonTitle: document.getElementById("patientButtonTitle"),
-      patientButtonHint: document.getElementById("patientButtonHint"),
-      doctorLive: document.getElementById("doctorLive"),
-      patientLive: document.getElementById("patientLive"),
+      apiKey: document.getElementById("apiKey"),
+      liveToggleButton: document.getElementById("liveToggleButton"),
+      liveTitle: document.getElementById("liveTitle"),
+      liveHint: document.getElementById("liveHint"),
+      liveIcon: document.getElementById("liveIcon"),
       conversation: document.getElementById("conversation"),
       clearLog: document.getElementById("clearLog"),
-      status: document.getElementById("status")
+      status: document.getElementById("status"),
+      textInputForm: document.getElementById("textInputForm"),
+      textInput: document.getElementById("textInput")
     };
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     init();
 
     function init() {
       els.languageSelect.value = state.targetLang;
-      els.patientButtonTitle.textContent = languages[state.targetLang].nativeLabel;
-      els.patientButtonHint.textContent = languages[state.targetLang].holdToTalk;
-      bindPressToTalk(els.doctorButton, "doctor");
-      bindPressToTalk(els.patientButton, "patient");
+      els.apiKey.value = localStorage.getItem("geminiApiKey") || "";
+      els.liveToggleButton.addEventListener("click", toggleLive);
       renderQuickPhrases();
+
+      els.apiKey.addEventListener("change", () => {
+        localStorage.setItem("geminiApiKey", els.apiKey.value.trim());
+      });
 
       els.languageSelect.addEventListener("change", () => {
         state.targetLang = els.languageSelect.value;
         localStorage.setItem("targetLang", state.targetLang);
-        els.patientButtonTitle.textContent = languages[state.targetLang].nativeLabel;
-        els.patientButtonHint.textContent = languages[state.targetLang].holdToTalk;
         setStatus(`已切換對方語言：${languages[state.targetLang].label}`);
+        if(state.isLive) {
+          stopLive();
+          setStatus(`語言已切換，請重新啟動連線`);
+        }
       });
 
       els.clearLog.addEventListener("click", clearConversation);
 
+      els.textInputForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = els.textInput.value.trim();
+        if (!text) return;
+        
+        els.textInput.value = "";
+        els.textInput.blur();
+        
+        const target = state.targetLang;
+        setStatus("正在翻譯手動輸入內容...");
+        
+        const translated = await translateText(text, "zh-TW", target);
+        addMessage("doctor", text, translated);
+      });
+
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=7").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=18").catch(() => {});
         });
       }
+    }
 
-      if (!SpeechRecognition) {
-        setStatus("此瀏覽器不支援語音辨識。建議使用 Android Chrome。");
+    function toggleLive() {
+      if (state.isLive) {
+        stopLive();
+      } else {
+        startLive();
       }
     }
 
-    function renderQuickPhrases() {
-      const container = document.getElementById("quickPhrases");
-      if (!container) return;
-      container.replaceChildren();
-      quickPhrasebook.forEach((phrase) => {
-        const btn = document.createElement("button");
-        btn.className = "quick-phrase-btn";
-        btn.textContent = phrase.zh;
-        btn.addEventListener("click", () => {
-          addMessage("doctor", phrase.zh, phrase[state.targetLang]);
-        });
-        container.appendChild(btn);
-      });
-    }
-
-    function bindPressToTalk(button, side) {
-      button.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        button.setPointerCapture(event.pointerId);
-        startListening(side);
-      });
-
-      button.addEventListener("pointerup", (event) => {
-        event.preventDefault();
-        stopListening();
-      });
-
-      button.addEventListener("pointercancel", () => stopListening());
-      button.addEventListener("lostpointercapture", () => {
-        if (state.activeSide === side) stopListening();
-      });
-    }
-
-    function startListening(side) {
-      if (!SpeechRecognition) return;
-      stopListening(false);
-      state.activeSide = side;
-      state.finalTranscript = "";
-      state.interimTranscript = "";
-      const live = side === "doctor" ? els.doctorLive : els.patientLive;
-      const button = side === "doctor" ? els.doctorButton : els.patientButton;
-      live.textContent = "正在聆聽...";
-      button.classList.add("is-listening");
-      setStatus(side === "doctor" ? "正在聽醫師說中文" : `正在聽對方說${languages[state.targetLang].label}`);
-
-      const recognition = new SpeechRecognition();
-      recognition.lang = side === "doctor" ? "zh-TW" : languages[state.targetLang].speech;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
-          const text = event.results[i][0].transcript.trim();
-          if (event.results[i].isFinal) state.finalTranscript += text;
-          else interim += text;
-        }
-        state.interimTranscript = interim;
-        live.textContent = state.finalTranscript || interim || "正在聆聽...";
-      };
-
-      recognition.onerror = () => {
-        live.textContent = "沒有收到清楚語音，請再按一次。";
-        setStatus("語音辨識未成功，請確認已允許麥克風權限。");
-        cleanupListening();
-      };
-
-      recognition.onend = () => {
-        if (state.activeSide) finishListening();
-      };
-
-      state.recognition = recognition;
-      recognition.start();
-    }
-
-    function stopListening(shouldFinish = true) {
-      if (!state.recognition) return;
-      const recognition = state.recognition;
-      state.recognition = null;
+    async function startLive() {
+      const apiKey = els.apiKey.value.trim();
+      if (!apiKey) {
+        setStatus("請先輸入 Gemini API Key");
+        return;
+      }
       
-      if (state.activeSide) {
-        const button = state.activeSide === "doctor" ? els.doctorButton : els.patientButton;
-        button.classList.remove("is-listening");
-        const live = state.activeSide === "doctor" ? els.doctorLive : els.patientLive;
-        if (shouldFinish) {
-          live.textContent = "處理中...";
+      setStatus("正在驗證 API Key 並準備連線...");
+      let finalModel = GEMINI_MODEL;
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}?key=${apiKey}`);
+        if (res.ok) {
+          setStatus(`已確認可使用模型：${finalModel}`);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          const errMsg = `模型或 API Key 驗證失敗: ${errData.error?.message || res.statusText}`;
+          setStatus(errMsg);
+          alert(errMsg);
+          stopLive("模型或金鑰無法使用");
+          return;
         }
+      } catch (e) {
+        console.warn("模型驗證失敗，仍嘗試建立 Live 連線", e);
       }
 
       try {
-        recognition.stop();
-      } catch (error) {
-        cleanupListening();
-      }
-      
-      if (!shouldFinish) {
-        cleanupListening();
-      } else if (state.activeSide) {
-        clearTimeout(state.fallbackTimer);
-        state.fallbackTimer = setTimeout(() => {
-          if (state.activeSide) finishListening();
-        }, 3000);
-      }
-    }
-
-    async function finishListening() {
-      const side = state.activeSide;
-      const text = (state.finalTranscript || state.interimTranscript).trim();
-      const live = side === "doctor" ? els.doctorLive : els.patientLive;
-      
-      cleanupListening();
-      
-      if (!text) {
-        setStatus("沒有收到內容，請再按住說一次。");
-        live.textContent = side === "doctor" ? "等待醫師說話" : "等待對方說話";
+        state.stream = await navigator.mediaDevices.getUserMedia({ audio: true, channelCount: 1, sampleRate: 16000 });
+      } catch (e) {
+        setStatus("無法存取麥克風權限");
+        alert("錯誤：無法存取麥克風");
+        stopLive("麥克風被拒絕");
         return;
       }
 
-      const target = side === "doctor" ? state.targetLang : "zh-TW";
-      const source = side === "doctor" ? "zh-TW" : languages[state.targetLang].translate;
-      setStatus("正在翻譯...");
-      live.textContent = "正在翻譯...";
+      setStatus(`正在連線至 ${finalModel}...`);
+      els.liveToggleButton.classList.add("is-listening");
+      els.liveToggleButton.style.background = "var(--danger)";
+      els.liveIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>`;
+      els.liveTitle.textContent = "停止即時翻譯";
+      els.liveHint.textContent = "連線中... 隨時可以說話";
       
-      const translated = await translateText(text, source, target);
-      addMessage(side, text, translated);
+      const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      state.ws = new WebSocket(url);
       
-      live.textContent = side === "doctor" ? "等待醫師說話" : "等待對方說話";
+      state.ws.onopen = () => {
+        setStatus(`即時連線成功 (${finalModel})：請直接開口說話`);
+        state.isLive = true;
+        
+        const targetLangName = languages[state.targetLang].label;
+        state.ws.send(JSON.stringify({
+          config: {
+            model: "models/" + finalModel,
+            responseModalities: ["TEXT"],
+            systemInstruction: {
+              parts: [{ text: `You are a real-time medical interpreter. The doctor speaks Traditional Chinese. The patient speaks ${targetLangName}. 
+Listen to the audio stream. If you hear Chinese, translate it to ${targetLangName}. If you hear ${targetLangName}, translate it to Chinese. 
+Output ONLY the translated text in one sentence. Do not add labels like "Doctor:" or "Translation:".` }]
+            }
+          }
+        }));
+        
+        startAudioCapture();
+      };
+      
+      state.ws.onmessage = (event) => {
+        try {
+          if (event.data instanceof Blob) return; // Ignore raw blobs if any
+          const msg = JSON.parse(event.data);
+          
+          if (msg.error) {
+            console.error("WS API Error", msg.error);
+            setStatus("API 錯誤: " + msg.error.message);
+            stopLive();
+            return;
+          }
+
+          if (msg.serverContent && msg.serverContent.modelTurn) {
+            const parts = msg.serverContent.modelTurn.parts;
+            let textChunk = "";
+            parts.forEach(p => { if (p.text) textChunk += p.text; });
+            
+            if (textChunk) {
+              appendTranscript(textChunk);
+            }
+          }
+          
+          if (msg.serverContent && msg.serverContent.turnComplete) {
+            finalizeTranscript();
+          }
+        } catch(e) {
+          console.error("WS Parse error", e);
+        }
+      };
+      
+      state.ws.onerror = (e) => {
+        console.error("WS Error", e);
+        const errMsg = "連線發生錯誤 (可能有防火牆或跨域問題)";
+        setStatus(errMsg);
+        alert(errMsg);
+        stopLive(errMsg);
+      };
+      
+      state.ws.onclose = (e) => {
+        console.error("WS Close", e.code, e.reason);
+        if (e.code !== 1000 && e.code !== 1005) {
+          const errMsg = `被伺服器拒絕 (代碼: ${e.code}, 原因: ${e.reason || "無說明"})`;
+          setStatus(errMsg);
+          alert(errMsg);
+          stopLive(errMsg);
+        } else {
+          stopLive("即時連線已結束");
+        }
+      };
     }
 
-    function cleanupListening() {
-      state.activeSide = null;
-      els.doctorButton.classList.remove("is-listening");
-      els.patientButton.classList.remove("is-listening");
-      clearTimeout(state.fallbackTimer);
+    function startAudioCapture() {
+      state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      const source = state.audioContext.createMediaStreamSource(state.stream);
+      // createScriptProcessor is deprecated but stable for this polyfill need
+      state.processor = state.audioContext.createScriptProcessor(4096, 1, 1);
+      
+      state.processor.onaudioprocess = (e) => {
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+        
+        const pcmFloat = e.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(pcmFloat.length);
+        for (let i = 0; i < pcmFloat.length; i++) {
+          let s = Math.max(-1, Math.min(1, pcmFloat[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        
+        const buffer = new Uint8Array(pcm16.buffer);
+        let binary = '';
+        for (let i = 0; i < buffer.byteLength; i++) {
+          binary += String.fromCharCode(buffer[i]);
+        }
+        const base64 = btoa(binary);
+        
+        state.ws.send(JSON.stringify({
+          realtimeInput: {
+            audio: { mimeType: "audio/pcm;rate=16000", data: base64 }
+          }
+        }));
+      };
+      
+      source.connect(state.processor);
+      state.processor.connect(state.audioContext.destination);
+    }
+    function stopLive(errorMsg = null) {
+      state.isLive = false;
+      if (state.processor) {
+        state.processor.disconnect();
+        state.processor = null;
+      }
+      if (state.audioContext) {
+        state.audioContext.close();
+        state.audioContext = null;
+      }
+      if (state.stream) {
+        state.stream.getTracks().forEach(t => t.stop());
+        state.stream = null;
+      }
+      if (state.ws) {
+        state.ws.close();
+        state.ws = null;
+      }
+      
+      finalizeTranscript();
+      
+      setStatus(errorMsg ? errorMsg : "即時連線已結束");
+      els.liveToggleButton.classList.remove("is-listening");
+      els.liveToggleButton.style.background = "";
+      els.liveIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`;
+      els.liveTitle.textContent = "啟動即時雙向翻譯";
+      els.liveHint.textContent = "點擊後不需按住，雙方可自由講話";
+    }
+
+    function appendTranscript(text) {
+      const empty = els.conversation.querySelector(".empty-state");
+      if (empty) empty.remove();
+
+      if (!state.currentMessageDiv) {
+        const article = document.createElement("article");
+        article.className = `message doctor`; // 使用單一配色
+        article.innerHTML = `
+          <div class="message-meta">
+            <span>即時翻譯 · Live API</span>
+            <span>${new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <div class="message-translation"></div>
+        `;
+        els.conversation.appendChild(article);
+        state.currentMessageDiv = article.querySelector(".message-translation");
+      }
+      
+      state.currentMessageDiv.textContent += text;
+      els.conversation.scrollTop = els.conversation.scrollHeight;
+    }
+
+    function finalizeTranscript() {
+      if (state.currentMessageDiv) {
+        state.currentMessageDiv = null;
+      }
     }
 
     async function translateText(text, source, target) {
-      try {
-        const sourceCode = normalizeTranslateCode(source);
-        const targetCode = normalizeTranslateCode(target);
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceCode}|${targetCode}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("translation failed");
-        const data = await response.json();
-        const translated = data && data.responseData && data.responseData.translatedText;
-        if (translated) return cleanTranslation(translated);
-      } catch (error) {
-        setStatus("線上翻譯暫時無法使用，已保留原文。");
+      const apiKey = els.apiKey.value.trim();
+      if (!apiKey) {
+        setStatus("手動輸入需要 Gemini API Key");
+        return "翻譯失敗，缺少 API Key";
       }
-
-      return "翻譯暫時無法取得，請稍後再試。";
-    }
-
-    function normalizeTranslateCode(code) {
-      if (code === "zh-TW") return "zh-TW";
-      return code;
-    }
-
-    function cleanTranslation(text) {
-      const textarea = document.createElement("textarea");
-      textarea.innerHTML = text;
-      return textarea.value;
+      const targetLangName = target === "zh-TW" ? "Traditional Chinese" : languages[target].label;
+      const promptText = `Translate the following medical phrase to ${targetLangName}. Return ONLY a valid JSON object: {"translated": "the translation"}\n\nPhrase: ${text}`;
+      
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+        });
+        const data = await response.json();
+        let resultText = data.candidates[0].content.parts[0].text;
+        resultText = resultText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        return JSON.parse(resultText).translated;
+      } catch (e) {
+        return "翻譯暫時無法取得，請稍後再試。";
+      }
     }
 
     function addMessage(side, original, translation) {

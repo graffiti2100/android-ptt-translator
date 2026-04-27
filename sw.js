@@ -1,7 +1,7 @@
-const CACHE_NAME = "android-ptt-translator-v7";
+const CACHE_NAME = "android-ptt-translator-v18";
 const APP_SHELL = [
   "./",
-  "./index.html?v=7",
+  "./index.html?v=18",
   "./manifest.json?v=1",
   "./icon.svg?v=1"
 ];
