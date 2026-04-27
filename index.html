@@ -543,6 +543,7 @@
   <script>
     const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
     const TEXT_MODEL = "gemini-3.1-flash-lite-preview";
+    const DEFAULT_GEMINI_API_KEY = "AIzaSyBetDr0AdVVykF8gtYg4l85B6LJTypZvU8";
 
     const languages = {
       vi: { label: "越南文", nativeLabel: "Tiếng Việt", holdToTalk: "Nhấn giữ để nói", speech: "vi-VN", translate: "vi" },
@@ -596,7 +597,7 @@
 
     function init() {
       els.languageSelect.value = state.targetLang;
-      els.apiKey.value = localStorage.getItem("geminiApiKey") || "";
+      els.apiKey.value = localStorage.getItem("geminiApiKey") || DEFAULT_GEMINI_API_KEY;
       els.liveToggleButton.addEventListener("click", toggleLive);
       renderQuickPhrases();
 
@@ -633,9 +634,26 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=19").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=21").catch(() => {});
         });
       }
+    }
+
+    function renderQuickPhrases() {
+      const container = document.getElementById("quickPhrases");
+      if (!container) return;
+      container.replaceChildren();
+
+      quickPhrasebook.forEach((phrase) => {
+        const button = document.createElement("button");
+        button.className = "quick-phrase-btn";
+        button.type = "button";
+        button.textContent = phrase.zh;
+        button.addEventListener("click", () => {
+          addMessage("doctor", phrase.zh, phrase[state.targetLang]);
+        });
+        container.appendChild(button);
+      });
     }
 
     function toggleLive() {
@@ -912,8 +930,7 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
     function clearConversation() {
       window.speechSynthesis && window.speechSynthesis.cancel();
       els.conversation.innerHTML = '<div class="empty-state">尚無對話。按住下方按鈕開始說話。</div>';
-      els.doctorLive.textContent = "等待醫師說話";
-      els.patientLive.textContent = "等待對方說話";
+      state.currentMessageDiv = null;
       setStatus("對話紀錄已清除");
     }
 
