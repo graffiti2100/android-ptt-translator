@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gemini Live API 預錄音檔測試</title>
+  <style>
+    body {
+      margin: 0;
+      background: #eef4f1;
+      color: #17201d;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif;
+      padding: 24px;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      background: #0f766e;
+      color: white;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #ffffff;
+      border: 1px solid #d8e4df;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 280px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Gemini Live API 預錄音檔測試</h1>
+    <p>這個測試會讀取本機 WAV 預錄音檔，轉成 PCM 後送到 Gemini Live API，要求翻成繁體中文。</p>
+    <button id="runTest" type="button">開始測試預錄音檔</button>
+    <pre id="log">尚未開始</pre>
+  </main>
+
+  <script>
+    const logEl = document.getElementById("log");
+    const runButton = document.getElementById("runTest");
+
+    runButton.addEventListener("click", () => runTest().catch((error) => {
+      writeLog(`測試失敗：${error.message || error}`);
+      runButton.disabled = false;
+    }));
+
+    function writeLog(message) {
+      logEl.textContent += `\n${message}`;
+    }
+
+    async function runTest() {
+      runButton.disabled = true;
+      logEl.textContent = "讀取 App 設定...";
+
+      const appHtml = await fetch("index.html?v=21", { cache: "no-store" }).then((response) => response.text());
+      const apiKey = appHtml.match(/DEFAULT_GEMINI_API_KEY\s*=\s*"([^"]+)"/)?.[1];
+      const model = appHtml.match(/GEMINI_MODEL\s*=\s*"([^"]+)"/)?.[1];
+      if (!apiKey || !model) throw new Error("讀不到 API Key 或 Live 模型設定");
+
+      writeLog(`Live 模型：${model}`);
+      writeLog("讀取預錄音檔 test-audio-english.wav...");
+      const audioBytes = await fetch("test-audio-english.wav", { cache: "no-store" }).then((response) => {
+        if (!response.ok) throw new Error(`音檔讀取失敗：${response.status}`);
+        return response.arrayBuffer();
+      });
+
+      const audioContext = new AudioContext();
+      const decoded = await audioContext.decodeAudioData(audioBytes.slice(0));
+      const resampled = await resampleToMono(decoded, 16000, 10);
+      const pcm = floatToPcm16(resampled.samples);
+      writeLog(`音檔取樣率：${decoded.sampleRate} Hz`);
+      writeLog(`送出取樣率：${resampled.sampleRate} Hz`);
+      writeLog(`送出秒數：約 ${Math.round(pcm.samples.length / resampled.sampleRate)} 秒`);
+
+      const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      const socket = new WebSocket(url);
+      let translatedText = "";
+      let audioStarted = false;
+
+      await new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          socket.close();
+          reject(new Error("等待 Gemini 回應逾時"));
+        }, 60000);
+
+        socket.onopen = () => {
+          writeLog("WebSocket 已連線，送出設定...");
+          socket.send(JSON.stringify({
+            setup: {
+              model: `models/${model}`,
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: "Kore"
+                  }
+                }
+              }
+              },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              systemInstruction: {
+                parts: [{
+                  text: "You are a medical interpreter. Translate any English speech in the audio into Traditional Chinese. Output only the translated Chinese sentence. If you cannot understand speech, output NO_SPEECH."
+                }]
+              }
+            }
+          }));
+          window.setTimeout(() => {
+            if (!audioStarted && socket.readyState === WebSocket.OPEN) {
+              writeLog("未收到 setupComplete，直接開始送音訊...");
+              audioStarted = true;
+              sendPcm(socket, pcm.samples, resampled.sampleRate);
+            }
+          }, 2000);
+        };
+
+        socket.onmessage = async (event) => {
+          const rawMessage = event.data instanceof Blob ? await event.data.text() : event.data;
+          const message = JSON.parse(rawMessage);
+          writeLog(`收到伺服器訊息：${Object.keys(message).join(", ")}`);
+          if (message.error) {
+            window.clearTimeout(timeout);
+            reject(new Error(message.error.message || "Gemini 回傳錯誤"));
+            return;
+          }
+
+          if (message.setupComplete) {
+            writeLog("設定完成，開始送音訊 PCM...");
+            audioStarted = true;
+            sendPcm(socket, pcm.samples, resampled.sampleRate);
+            return;
+          }
+
+          if (message.serverContent?.inputTranscription?.text) {
+            writeLog(`輸入轉錄：${message.serverContent.inputTranscription.text}`);
+          }
+
+          if (message.serverContent?.outputTranscription?.text) {
+            translatedText += message.serverContent.outputTranscription.text;
+            writeLog(`輸出轉錄：${message.serverContent.outputTranscription.text}`);
+          }
+
+          const parts = message.serverContent?.modelTurn?.parts || [];
+          for (const part of parts) {
+            if (part.text) {
+              writeLog(`收到模型文字片段：${part.text}`);
+            }
+          }
+
+          if (message.serverContent?.turnComplete && translatedText.trim()) {
+            window.clearTimeout(timeout);
+            writeLog(`完成：${translatedText.trim()}`);
+            socket.close();
+            resolve();
+          }
+        };
+
+        socket.onerror = () => {
+          window.clearTimeout(timeout);
+          reject(new Error("WebSocket 連線錯誤"));
+        };
+
+        socket.onclose = (event) => {
+          if (!translatedText.trim() && event.code !== 1000 && event.code !== 1005) {
+            window.clearTimeout(timeout);
+            reject(new Error(`WebSocket 被關閉：${event.code} ${event.reason || ""}`));
+          }
+        };
+      });
+
+      runButton.disabled = false;
+    }
+
+    async function resampleToMono(audioBuffer, targetRate, maxSeconds) {
+      const sourceSeconds = Math.min(audioBuffer.duration, maxSeconds);
+      const frameCount = Math.floor(sourceSeconds * targetRate);
+      const offline = new OfflineAudioContext(1, frameCount, targetRate);
+      const source = offline.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offline.destination);
+      source.start(0);
+      const rendered = await offline.startRendering();
+      return {
+        sampleRate: targetRate,
+        samples: rendered.getChannelData(0)
+      };
+    }
+
+    function floatToPcm16(floatSamples) {
+      const samples = new Int16Array(floatSamples.length);
+      for (let i = 0; i < floatSamples.length; i += 1) {
+        const value = Math.max(-1, Math.min(1, floatSamples[i]));
+        samples[i] = value < 0 ? value * 0x8000 : value * 0x7fff;
+      }
+      return { samples };
+    }
+
+    function sendPcm(socket, samples, sampleRate) {
+      const chunkSize = Math.floor(sampleRate * 0.25);
+      let offset = 0;
+
+      const sendNext = () => {
+        if (offset >= samples.length) {
+          writeLog("音訊已送完，通知 Gemini 音訊串流結束...");
+          socket.send(JSON.stringify({
+            realtimeInput: {
+              audioStreamEnd: true
+            }
+          }));
+          return;
+        }
+
+        const chunk = samples.slice(offset, offset + chunkSize);
+        offset += chunkSize;
+        socket.send(JSON.stringify({
+          realtimeInput: {
+            audio: {
+              mimeType: `audio/pcm;rate=${sampleRate}`,
+              data: int16ToBase64(chunk)
+            }
+          }
+        }));
+        window.setTimeout(sendNext, 40);
+      };
+
+      sendNext();
+    }
+
+    function int16ToBase64(samples) {
+      const bytes = new Uint8Array(samples.buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 1) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+  </script>
+</body>
+</html>

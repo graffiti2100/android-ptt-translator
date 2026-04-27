@@ -634,7 +634,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=21").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=26").catch(() => {});
         });
       }
     }
@@ -714,9 +714,20 @@
         
         const targetLangName = languages[state.targetLang].label;
         state.ws.send(JSON.stringify({
-          config: {
+          setup: {
             model: "models/" + finalModel,
-            responseModalities: ["TEXT"],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: "Kore"
+                  }
+                }
+              }
+            },
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
             systemInstruction: {
               parts: [{ text: `You are a real-time medical interpreter. The doctor speaks Traditional Chinese. The patient speaks ${targetLangName}. 
 Listen to the audio stream. If you hear Chinese, translate it to ${targetLangName}. If you hear ${targetLangName}, translate it to Chinese. 
@@ -728,10 +739,10 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
         startAudioCapture();
       };
       
-      state.ws.onmessage = (event) => {
+      state.ws.onmessage = async (event) => {
         try {
-          if (event.data instanceof Blob) return; // Ignore raw blobs if any
-          const msg = JSON.parse(event.data);
+          const rawMessage = event.data instanceof Blob ? await event.data.text() : event.data;
+          const msg = JSON.parse(rawMessage);
           
           if (msg.error) {
             console.error("WS API Error", msg.error);
@@ -740,14 +751,8 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
             return;
           }
 
-          if (msg.serverContent && msg.serverContent.modelTurn) {
-            const parts = msg.serverContent.modelTurn.parts;
-            let textChunk = "";
-            parts.forEach(p => { if (p.text) textChunk += p.text; });
-            
-            if (textChunk) {
-              appendTranscript(textChunk);
-            }
+          if (msg.serverContent && msg.serverContent.outputTranscription && msg.serverContent.outputTranscription.text) {
+            appendTranscript(msg.serverContent.outputTranscription.text);
           }
           
           if (msg.serverContent && msg.serverContent.turnComplete) {
@@ -859,7 +864,7 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
         state.currentMessageDiv = article.querySelector(".message-translation");
       }
       
-      state.currentMessageDiv.textContent += text;
+      state.currentMessageDiv.textContent = normalizeStreamingText(state.currentMessageDiv.textContent + text);
       els.conversation.scrollTop = els.conversation.scrollHeight;
     }
 
@@ -940,6 +945,12 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
 
     function normalizeText(text) {
       return text.replace(/\s+/g, "").replace(/[，。！？,.!?]/g, "").toLowerCase();
+    }
+
+    function normalizeStreamingText(text) {
+      return text
+        .replace(/([\u3400-\u9fff])\s+(?=[\u3400-\u9fff])/g, "$1")
+        .replace(/\s+([，。！？、；：])/g, "$1");
     }
 
     function escapeHtml(text) {

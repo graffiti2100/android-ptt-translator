@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gemini Live Setup Debug</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; background: #eef4f1; color: #17201d; }
+    button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: #0f766e; color: white; font-weight: 800; }
+    pre { white-space: pre-wrap; background: white; border: 1px solid #d8e4df; border-radius: 8px; padding: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Gemini Live Setup Debug</h1>
+  <button id="run">測試 setup 格式</button>
+  <pre id="log">尚未開始</pre>
+
+  <script>
+    const log = document.getElementById("log");
+    document.getElementById("run").addEventListener("click", run);
+
+    function append(text) {
+      log.textContent += `\n${text}`;
+    }
+
+    async function run() {
+      log.textContent = "讀取設定...";
+      const appHtml = await fetch("index.html?v=23", { cache: "no-store" }).then((response) => response.text());
+      const apiKey = appHtml.match(/DEFAULT_GEMINI_API_KEY\s*=\s*"([^"]+)"/)?.[1];
+      const model = appHtml.match(/GEMINI_MODEL\s*=\s*"([^"]+)"/)?.[1];
+      const endpoints = ["v1beta", "v1alpha"];
+      const payloads = [
+        {
+          name: "setup-audio-minimal",
+          body: { setup: { model: `models/${model}`, generationConfig: { responseModalities: ["AUDIO"] } } }
+        },
+        {
+          name: "setup-audio-voice",
+          body: { setup: { model: `models/${model}`, generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } } } }
+        },
+        {
+          name: "setup-audio-transcription",
+          body: { setup: { model: `models/${model}`, generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } }, inputAudioTranscription: {}, outputAudioTranscription: {} } }
+        },
+        {
+          name: "setup-text",
+          body: { setup: { model: `models/${model}`, generationConfig: { responseModalities: ["TEXT"] } } }
+        }
+      ];
+
+      for (const endpoint of endpoints) {
+        for (const payload of payloads) {
+          append(`\n--- ${endpoint} / ${payload.name} ---`);
+          const result = await testOne(endpoint, apiKey, payload.body);
+          append(JSON.stringify(result));
+        }
+      }
+    }
+
+    function testOne(endpoint, apiKey, body) {
+      return new Promise((resolve) => {
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.${endpoint}.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        const ws = new WebSocket(url);
+        const messages = [];
+        const timer = window.setTimeout(() => {
+          ws.close();
+          resolve({ result: "timeout", messages });
+        }, 6000);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify(body));
+        };
+
+        ws.onmessage = async (event) => {
+          const rawMessage = event.data instanceof Blob ? await event.data.text() : String(event.data);
+          messages.push(rawMessage.slice(0, 300));
+          window.clearTimeout(timer);
+          ws.close();
+          resolve({ result: "message", messages });
+        };
+
+        ws.onerror = () => {
+          window.clearTimeout(timer);
+          resolve({ result: "error", messages });
+        };
+
+        ws.onclose = (event) => {
+          if (event.code !== 1000 && event.code !== 1005 && messages.length === 0) {
+            window.clearTimeout(timer);
+            resolve({ result: "close", code: event.code, reason: event.reason });
+          }
+        };
+      });
+    }
+  </script>
+</body>
+</html>
