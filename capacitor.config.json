@@ -1,0 +1,11 @@
+{
+  "appId": "tw.healthcheck.translator",
+  "appName": "Android雙向翻譯器",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

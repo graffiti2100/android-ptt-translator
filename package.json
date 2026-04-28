@@ -1,0 +1,18 @@
+{
+  "name": "android-ptt-translator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android two-way push-to-talk translator packaged with Capacitor.",
+  "scripts": {
+    "prepare:web": "node scripts/prepare-web.mjs",
+    "sync:android": "npm run prepare:web && npx cap sync android",
+    "build:apk": "npm run prepare:web && npx cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4"
+  }
+}
