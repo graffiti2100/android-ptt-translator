@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
-  <meta name="application-name" content="Android 平板雙向 Push-to-talk 翻譯器">
-  <title>Android 平板雙向 Push-to-talk 翻譯器</title>
+  <meta name="application-name" content="Android雙向翻譯器">
+  <title>Android雙向翻譯器</title>
   <link rel="manifest" href="manifest.json?v=1">
   <link rel="icon" href="icon.svg?v=1" type="image/svg+xml">
   <style>
@@ -488,8 +488,7 @@
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <h1>Android 平板雙向 Push-to-talk 翻譯器</h1>
-        <p>醫師按左邊說中文，外籍勞工按右邊說母語；每一句都會顯示原文與翻譯。</p>
+        <h1>Android雙向翻譯器</h1>
       </div>
 
       <div class="field">
@@ -633,7 +632,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=28").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=29").catch(() => {});
         });
       }
     }
