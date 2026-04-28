@@ -366,6 +366,13 @@
 
     .message.patient {
       border-left-color: var(--patient);
+      background: #fffaf0;
+      border-color: #f1d6ad;
+      border-left-color: var(--patient);
+    }
+
+    .message.patient .message-translation {
+      color: #78350f;
     }
 
     .message-meta {
@@ -495,10 +502,6 @@
         </select>
       </div>
 
-      <div class="field">
-        <label for="apiKey">Gemini API Key</label>
-        <input type="password" id="apiKey" placeholder="請輸入 Key">
-      </div>
     </header>
 
     <section class="workspace" aria-label="翻譯主畫面">
@@ -540,16 +543,17 @@
     </footer>
   </main>
 
+  <script src="local-key.js?v=1"></script>
   <script>
     const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
     const TEXT_MODEL = "gemini-3.1-flash-lite-preview";
-    const DEFAULT_GEMINI_API_KEY = "AIzaSyBetDr0AdVVykF8gtYg4l85B6LJTypZvU8";
+    const DEFAULT_GEMINI_API_KEY = window.LOCAL_GEMINI_API_KEY || "";
 
     const languages = {
-      vi: { label: "越南文", nativeLabel: "Tiếng Việt", holdToTalk: "Nhấn giữ để nói", speech: "vi-VN", translate: "vi" },
-      id: { label: "印尼文", nativeLabel: "Bahasa Indonesia", holdToTalk: "Tahan untuk bicara", speech: "id-ID", translate: "id" },
-      th: { label: "泰文", nativeLabel: "ภาษาไทย", holdToTalk: "กดค้างเพื่อพูด", speech: "th-TH", translate: "th" },
-      en: { label: "英文", nativeLabel: "English", holdToTalk: "Hold to talk", speech: "en-US", translate: "en" }
+      vi: { label: "越南文", nativeLabel: "Tiếng Việt", patientLabel: "Người được khám", chineseLabel: "Tiếng Trung", holdToTalk: "Nhấn giữ để nói", speech: "vi-VN", translate: "vi" },
+      id: { label: "印尼文", nativeLabel: "Bahasa Indonesia", patientLabel: "Peserta pemeriksaan", chineseLabel: "Bahasa Mandarin", holdToTalk: "Tahan untuk bicara", speech: "id-ID", translate: "id" },
+      th: { label: "泰文", nativeLabel: "ภาษาไทย", patientLabel: "ผู้รับการตรวจ", chineseLabel: "ภาษาจีน", holdToTalk: "กดค้างเพื่อพูด", speech: "th-TH", translate: "th" },
+      en: { label: "英文", nativeLabel: "English", patientLabel: "Patient", chineseLabel: "Chinese", holdToTalk: "Hold to talk", speech: "en-US", translate: "en" }
     };
 
     const quickPhrasebook = [
@@ -576,12 +580,12 @@
       audioContext: null,
       processor: null,
       stream: null,
-      currentMessageDiv: null
+      currentMessageDiv: null,
+      liveTurn: null
     };
 
     const els = {
       languageSelect: document.getElementById("languageSelect"),
-      apiKey: document.getElementById("apiKey"),
       liveToggleButton: document.getElementById("liveToggleButton"),
       liveTitle: document.getElementById("liveTitle"),
       liveHint: document.getElementById("liveHint"),
@@ -597,13 +601,8 @@
 
     function init() {
       els.languageSelect.value = state.targetLang;
-      els.apiKey.value = localStorage.getItem("geminiApiKey") || DEFAULT_GEMINI_API_KEY;
       els.liveToggleButton.addEventListener("click", toggleLive);
       renderQuickPhrases();
-
-      els.apiKey.addEventListener("change", () => {
-        localStorage.setItem("geminiApiKey", els.apiKey.value.trim());
-      });
 
       els.languageSelect.addEventListener("change", () => {
         state.targetLang = els.languageSelect.value;
@@ -634,7 +633,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=26").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=28").catch(() => {});
         });
       }
     }
@@ -665,7 +664,7 @@
     }
 
     async function startLive() {
-      const apiKey = els.apiKey.value.trim();
+      const apiKey = getApiKey();
       if (!apiKey) {
         setStatus("請先輸入 Gemini API Key");
         return;
@@ -751,8 +750,12 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
             return;
           }
 
+          if (msg.serverContent && msg.serverContent.inputTranscription && msg.serverContent.inputTranscription.text) {
+            appendLiveInput(msg.serverContent.inputTranscription.text);
+          }
+
           if (msg.serverContent && msg.serverContent.outputTranscription && msg.serverContent.outputTranscription.text) {
-            appendTranscript(msg.serverContent.outputTranscription.text);
+            appendLiveOutput(msg.serverContent.outputTranscription.text);
           }
           
           if (msg.serverContent && msg.serverContent.turnComplete) {
@@ -837,6 +840,7 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
       }
       
       finalizeTranscript();
+      state.liveTurn = null;
       
       setStatus(errorMsg ? errorMsg : "即時連線已結束");
       els.liveToggleButton.classList.remove("is-listening");
@@ -868,14 +872,80 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
       els.conversation.scrollTop = els.conversation.scrollHeight;
     }
 
+    function appendLiveInput(text) {
+      const turn = ensureLiveTurn();
+      turn.original = normalizeStreamingText(turn.original + text);
+      turn.side = detectSpeakerSide(turn.original);
+      renderLiveTurn(turn);
+    }
+
+    function appendLiveOutput(text) {
+      const turn = ensureLiveTurn();
+      turn.translation = normalizeStreamingText(turn.translation + text);
+      renderLiveTurn(turn);
+    }
+
+    function ensureLiveTurn() {
+      if (state.liveTurn) return state.liveTurn;
+
+      const empty = els.conversation.querySelector(".empty-state");
+      if (empty) empty.remove();
+
+      const article = document.createElement("article");
+      article.className = "message patient";
+      article.innerHTML = `
+        <div class="message-meta">
+          <span class="message-speaker"></span>
+          <span>${new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+        <div class="message-original"></div>
+        <div class="message-translation"></div>
+      `;
+      els.conversation.appendChild(article);
+
+      state.liveTurn = {
+        article,
+        side: "patient",
+        original: "",
+        translation: ""
+      };
+      renderLiveTurn(state.liveTurn);
+      return state.liveTurn;
+    }
+
+    function renderLiveTurn(turn) {
+      const side = turn.side || "patient";
+      turn.article.classList.toggle("doctor", side === "doctor");
+      turn.article.classList.toggle("patient", side === "patient");
+      turn.article.querySelector(".message-speaker").textContent = buildLiveMeta(side);
+      turn.article.querySelector(".message-original").textContent = turn.original || "正在聆聽...";
+      turn.article.querySelector(".message-translation").textContent = turn.translation || "正在翻譯...";
+      els.conversation.scrollTop = els.conversation.scrollHeight;
+    }
+
+    function buildLiveMeta(side) {
+      const lang = languages[state.targetLang];
+      if (side === "doctor") {
+        return `醫師 · 中文 → ${lang.label}`;
+      }
+      return `${lang.patientLabel} · ${lang.nativeLabel} → ${lang.chineseLabel}`;
+    }
+
+    function detectSpeakerSide(text) {
+      return /[\u3400-\u9fff]/.test(text) ? "doctor" : "patient";
+    }
+
     function finalizeTranscript() {
       if (state.currentMessageDiv) {
         state.currentMessageDiv = null;
       }
+      if (state.liveTurn) {
+        state.liveTurn = null;
+      }
     }
 
     async function translateText(text, source, target) {
-      const apiKey = els.apiKey.value.trim();
+      const apiKey = getApiKey();
       if (!apiKey) {
         setStatus("手動輸入需要 Gemini API Key");
         return "翻譯失敗，缺少 API Key";
@@ -936,11 +1006,16 @@ Output ONLY the translated text in one sentence. Do not add labels like "Doctor:
       window.speechSynthesis && window.speechSynthesis.cancel();
       els.conversation.innerHTML = '<div class="empty-state">尚無對話。按住下方按鈕開始說話。</div>';
       state.currentMessageDiv = null;
+      state.liveTurn = null;
       setStatus("對話紀錄已清除");
     }
 
     function setStatus(text) {
       els.status.textContent = text;
+    }
+
+    function getApiKey() {
+      return localStorage.getItem("geminiApiKeyOverride") || DEFAULT_GEMINI_API_KEY;
     }
 
     function normalizeText(text) {
