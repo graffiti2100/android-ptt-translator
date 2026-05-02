@@ -545,8 +545,11 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <div class="brand">
-        <h1>Android雙向翻譯器</h1>
+      <div class="brand" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h1>Android雙向翻譯器</h1>
+        </div>
+        <button id="settingsBtn" onclick="openSettings()" style="height: 36px; width: 36px; font-size: 22px; border: none; background: transparent; cursor: pointer; padding: 0;" aria-label="設定">⚙️</button>
       </div>
 
       <div class="field">
@@ -558,7 +561,6 @@
           <option value="en">英文</option>
         </select>
       </div>
-      <button id="settingsBtn" onclick="openSettings()" style="align-self: end; height: 46px; width: 46px; font-size: 24px; border: none; background: transparent; cursor: pointer;" aria-label="設定">⚙️</button>
     </header>
 
     <section class="workspace" aria-label="翻譯主畫面">
