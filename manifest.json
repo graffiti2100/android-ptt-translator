@@ -2,7 +2,7 @@
   "name": "Android雙向翻譯器",
   "short_name": "雙向翻譯器",
   "description": "給健檢現場使用的雙向按住說話翻譯器，支援中文、越南文、印尼文、泰文與英文。",
-  "start_url": "./index.html?v=1",
+  "start_url": "./index.html?v=30",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
@@ -10,7 +10,7 @@
   "theme_color": "#0f766e",
   "icons": [
     {
-      "src": "icon.svg?v=1",
+      "src": "icon.svg?v=30",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

@@ -2,12 +2,13 @@
 <html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="referrer" content="unsafe-url">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
   <meta name="application-name" content="Android雙向翻譯器">
   <title>Android雙向翻譯器</title>
-  <link rel="manifest" href="manifest.json?v=1">
-  <link rel="icon" href="icon.svg?v=1" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json?v=30">
+  <link rel="icon" href="icon.svg?v=30" type="image/svg+xml">
   <style>
     :root {
       color-scheme: light;
@@ -482,6 +483,63 @@
         flex-direction: column;
       }
     }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: var(--surface);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .settings-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 8px;
+    }
+    .save-btn {
+      background: var(--doctor);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -500,7 +558,7 @@
           <option value="en">英文</option>
         </select>
       </div>
-
+      <button id="settingsBtn" onclick="openSettings()" style="align-self: end; height: 46px; width: 46px; font-size: 24px; border: none; background: transparent; cursor: pointer;" aria-label="設定">⚙️</button>
     </header>
 
     <section class="workspace" aria-label="翻譯主畫面">
@@ -542,7 +600,22 @@
     </footer>
   </main>
 
-  <script src="local-key.js?v=1"></script>
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>⚙️ 設定</span>
+        <button class="close-btn" onclick="closeSettings()">&times;</button>
+      </div>
+      <div>
+        <label style="font-size: 14px; font-weight: 700; color: var(--muted);">Gemini API Key</label>
+        <input type="text" id="apiKeyInput" class="settings-input" placeholder="AIzaSy...">
+        <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">請填寫您專屬的 Gemini API Key。若留空將嘗試使用預設值。</p>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">儲存設定</button>
+    </div>
+  </div>
+
+  <script src="local-key.js?v=30"></script>
   <script>
     const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
     const TEXT_MODEL = "gemini-3.1-flash-lite-preview";
@@ -596,6 +669,26 @@
       textInput: document.getElementById("textInput")
     };
 
+    function openSettings() {
+      document.getElementById('apiKeyInput').value = localStorage.getItem("geminiApiKeyOverride") || "";
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+    
+    function saveSettings() {
+      const val = document.getElementById('apiKeyInput').value.trim();
+      if(val) {
+        localStorage.setItem("geminiApiKeyOverride", val);
+      } else {
+        localStorage.removeItem("geminiApiKeyOverride");
+      }
+      closeSettings();
+      setStatus("設定已儲存");
+    }
+
     init();
 
     function init() {
@@ -632,7 +725,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js?v=29").catch(() => {});
+          navigator.serviceWorker.register("sw.js?v=30").catch(() => {});
         });
       }
     }

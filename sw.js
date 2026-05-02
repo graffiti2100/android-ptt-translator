@@ -1,9 +1,9 @@
-const CACHE_NAME = "android-ptt-translator-v29";
+const CACHE_NAME = "android-ptt-translator-v30";
 const APP_SHELL = [
   "./",
-  "./index.html?v=29",
-  "./manifest.json?v=1",
-  "./icon.svg?v=1"
+  "./index.html?v=30",
+  "./manifest.json?v=30",
+  "./icon.svg?v=30"
 ];
 
 self.addEventListener("install", (event) => {
